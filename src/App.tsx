@@ -17,11 +17,14 @@ const ChairIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const Navbar = () => {
+const Navbar = ({ onNavigate, currentPage }: { onNavigate: (page: string) => void, currentPage: string }) => {
   return (
     <nav className="sticky top-0 z-50 w-full bg-brand-white/90 backdrop-blur-md border-b border-brand-black/5">
       <div className="max-w-[1400px] mx-auto px-6 h-20 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div 
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => onNavigate('home')}
+        >
           <ChairIcon className="w-6 h-6 text-brand-black" />
           <div className="flex flex-col leading-none tracking-widest font-bold text-[10px] uppercase">
             <span>MGO Retro</span>
@@ -29,9 +32,15 @@ const Navbar = () => {
           </div>
         </div>
         <div className="hidden md:flex items-center gap-12 text-xs font-bold uppercase tracking-widest">
-          <a href="#programm" className="hover:text-brand-red transition-colors">Programm</a>
-          <a href="#location" className="hover:text-brand-red transition-colors">Location</a>
-          <a href="#ueber-uns" className="hover:text-brand-red transition-colors">Über uns</a>
+          {currentPage === 'home' ? (
+            <>
+              <a href="#programm" className="hover:text-brand-red transition-colors">Programm</a>
+              <a href="#location" className="hover:text-brand-red transition-colors">Location</a>
+              <a href="#ueber-uns" className="hover:text-brand-red transition-colors">Über uns</a>
+            </>
+          ) : (
+            <button onClick={() => onNavigate('home')} className="hover:text-brand-red transition-colors">Zurück zum Kino</button>
+          )}
         </div>
         <button className="bg-brand-black text-white px-8 py-4 text-xs font-bold uppercase tracking-widest hover:bg-brand-red transition-colors">
           Tickets
@@ -133,35 +142,16 @@ const programs = [
 ];
 
 const ProgramCard = ({ prog, idx }: { prog: typeof programs[0], idx: number }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ delay: idx * 0.15, duration: 0.8, ease: "easeOut" }}
-      className="group cursor-pointer flex flex-col"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="group cursor-pointer flex flex-col h-full">
       <div className="w-full aspect-[2/3] overflow-hidden bg-brand-gray mb-6 relative">
         <img 
           src={prog.image} 
           alt={prog.title}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] ${isHovered ? 'opacity-0' : 'opacity-100'} grayscale group-hover:grayscale-0`}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] grayscale group-hover:grayscale-0"
           referrerPolicy="no-referrer"
+          draggable="false"
         />
-        {isHovered && (
-          <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none bg-black">
-            <iframe
-              src={`https://www.youtube.com/embed/${prog.videoId}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=${prog.videoId}&playsinline=1`}
-              className="absolute top-1/2 left-1/2 w-[250%] h-[150%] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              allow="autoplay"
-              frameBorder="0"
-            />
-          </div>
-        )}
       </div>
       <div className="flex flex-col gap-3">
         <h3 className="text-3xl font-bold uppercase tracking-tight leading-none">{prog.title}</h3>
@@ -173,25 +163,76 @@ const ProgramCard = ({ prog, idx }: { prog: typeof programs[0], idx: number }) =
           <ArrowRight className="w-5 h-5 ml-3 transition-transform duration-300 group-hover:translate-x-2" />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
 const Program = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const scroll = () => {
+      if (scrollRef.current && !isDragging) {
+        scrollRef.current.scrollLeft += 1.5;
+        if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth / 2) {
+          scrollRef.current.scrollLeft = 0;
+        }
+      }
+      animationFrameId = requestAnimationFrame(scroll);
+    };
+    animationFrameId = requestAnimationFrame(scroll);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isDragging]);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    if (scrollRef.current) {
+      setStartX(e.pageX - scrollRef.current.offsetLeft);
+      setScrollLeft(scrollRef.current.scrollLeft);
+    }
+  };
+  const onMouseLeave = () => setIsDragging(false);
+  const onMouseUp = () => setIsDragging(false);
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 2;
+    scrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const extendedPrograms = [...programs, ...programs, ...programs, ...programs];
+
   return (
-    <section id="programm" className="py-32 px-6 max-w-[1400px] mx-auto">
-      <motion.h2 
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        className="text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-20"
-      >
-        Aktuelles Programm
-      </motion.h2>
+    <section id="programm" className="py-32 overflow-hidden">
+      <div className="px-6 max-w-[1400px] mx-auto">
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          className="text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter mb-20"
+        >
+          Aktuelles Programm
+        </motion.h2>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-16 md:gap-10">
-        {programs.map((prog, idx) => (
-          <ProgramCard key={prog.id} prog={prog} idx={idx} />
+      <div 
+        ref={scrollRef}
+        className="flex gap-10 overflow-x-hidden cursor-grab active:cursor-grabbing px-6 w-full pb-10"
+        onMouseDown={onMouseDown}
+        onMouseLeave={onMouseLeave}
+        onMouseUp={onMouseUp}
+        onMouseMove={onMouseMove}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {extendedPrograms.map((prog, idx) => (
+          <div key={idx} className="w-[280px] md:w-[350px] shrink-0" onDragStart={(e) => e.preventDefault()}>
+            <ProgramCard prog={prog} idx={idx} />
+          </div>
         ))}
       </div>
     </section>
@@ -300,7 +341,7 @@ const About = () => {
   );
 };
 
-const Footer = () => {
+const Footer = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   return (
     <footer className="py-16 px-6 border-t border-brand-black/10">
       <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-10">
@@ -311,9 +352,9 @@ const Footer = () => {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-8 text-xs font-mono uppercase tracking-widest text-brand-black/60">
-          <a href="#" className="hover:text-brand-black transition-colors">Impressum</a>
-          <a href="#" className="hover:text-brand-black transition-colors">Datenschutz</a>
-          <a href="#" className="hover:text-brand-black transition-colors">AGB</a>
+          <button onClick={() => onNavigate('impressum')} className="hover:text-brand-black transition-colors uppercase">Impressum</button>
+          <button onClick={() => onNavigate('datenschutz')} className="hover:text-brand-black transition-colors uppercase">Datenschutz</button>
+          <button onClick={() => onNavigate('agb')} className="hover:text-brand-black transition-colors uppercase">AGB</button>
         </div>
       </div>
     </footer>
@@ -474,25 +515,165 @@ const useKonamiCode = () => {
   return isRetro;
 };
 
+const CookieTicket = () => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isTorn, setIsTorn] = useState(false);
+
+  if (!isVisible) return null;
+
+  const handleAccept = () => {
+    setIsTorn(true);
+    setTimeout(() => setIsVisible(false), 1000);
+  };
+
+  return (
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] pointer-events-none flex justify-center w-full px-4">
+      <div className="pointer-events-auto relative flex items-center shadow-2xl drop-shadow-2xl">
+        {/* Left part of ticket */}
+        <motion.div
+          animate={isTorn ? { x: -40, y: 60, rotate: -12, opacity: 0 } : { x: 0, y: 0, rotate: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
+          className="bg-brand-black text-brand-white p-6 border-r-2 border-dashed border-brand-white/30 flex flex-col justify-between h-32 w-64 md:w-80 relative overflow-hidden"
+        >
+          <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-brand-white rounded-full"></div>
+          <div className="pl-4">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-brand-white/50">Eintrittskontrolle</p>
+            <p className="text-xl font-black uppercase tracking-tight leading-none mt-1">Cookies & Snacks</p>
+            <p className="text-[10px] font-mono uppercase text-brand-white/70 mt-4 leading-relaxed">
+              Wir nutzen funktionale Cookies, um deinen Kinobesuch auf dieser Seite zu optimieren.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Right part of ticket (The stub) */}
+        <motion.div
+          animate={isTorn ? { x: 40, y: 60, rotate: 12, opacity: 0 } : { x: 0, y: 0, rotate: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
+          className="bg-brand-red text-white p-6 flex flex-col justify-center items-center h-32 w-24 md:w-32 cursor-pointer hover:bg-red-700 transition-colors relative overflow-hidden group"
+          onClick={handleAccept}
+        >
+          <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-brand-white rounded-full"></div>
+          <span className="text-xs md:text-sm font-bold uppercase tracking-widest -rotate-90 whitespace-nowrap group-hover:scale-110 transition-transform">
+            Abreißen
+          </span>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+const ContactPopup = () => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-black/80 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-brand-white p-8 md:p-12 max-w-lg w-full border-4 border-brand-black relative shadow-2xl"
+      >
+        <button
+          onClick={() => setIsVisible(false)}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center border-2 border-brand-black hover:bg-brand-red hover:text-white hover:border-brand-red transition-colors font-bold"
+        >
+          X
+        </button>
+        <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-4">
+          Gefällt dir die Seite?
+        </h3>
+        <p className="text-sm font-mono uppercase tracking-widest leading-relaxed text-brand-black/80 mb-8">
+          Wenn dir die Website gefällt, schreib mir auf WhatsApp, weil Fiverr zu viele Gebühren verlangt.
+        </p>
+        <a
+          href="https://wa.me/4917624200179"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full text-center bg-brand-black text-white py-4 font-bold uppercase tracking-widest hover:bg-[#25D366] transition-colors"
+        >
+          WhatsApp: 0176 24200179
+        </a>
+      </motion.div>
+    </div>
+  );
+};
+
+const LegalPage = ({ title, onBack, children }: { title: string, onBack: () => void, children: React.ReactNode }) => (
+  <div className="pt-32 pb-20 px-6 max-w-[800px] mx-auto min-h-[70vh]">
+    <button onClick={onBack} className="mb-16 flex items-center gap-3 text-sm font-bold uppercase tracking-widest hover:text-brand-red transition-colors">
+      <ArrowRight className="w-5 h-5 rotate-180" /> Zurück zum Kino
+    </button>
+    <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-16">{title}</h1>
+    <div className="flex flex-col gap-8 font-mono text-sm uppercase tracking-widest leading-relaxed text-brand-black/80">
+      {children}
+    </div>
+  </div>
+);
+
 export default function App() {
   const isRetro = useKonamiCode();
+  const [currentPage, setCurrentPage] = useState('home');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentPage]);
 
   return (
     <div className={`min-h-screen bg-brand-white text-brand-black selection:bg-brand-red selection:text-white ${isRetro ? 'retro-mode' : ''}`}>
       <div className="film-grain"></div>
+      <ContactPopup />
       <SoundtrackPlayer />
-      <Navbar />
+      <CookieTicket />
+      <Navbar onNavigate={setCurrentPage} currentPage={currentPage} />
+      
       <main>
-        <Hero />
-        <TechFacts />
-        <Program />
-        <Voting />
-        <About />
-        <FAQ />
-        <Sponsors />
-        <Afterparty />
+        {currentPage === 'home' && (
+          <>
+            <Hero />
+            <TechFacts />
+            <Program />
+            <Voting />
+            <About />
+            <FAQ />
+            <Sponsors />
+            <Afterparty />
+          </>
+        )}
+        
+        {currentPage === 'impressum' && (
+          <LegalPage title="Impressum" onBack={() => setCurrentPage('home')}>
+            <p>MGO Retro Klassiker GmbH<br/>Kinoallee 42<br/>50667 Köln</p>
+            <p>Vertreten durch:<br/>Max Mustermann</p>
+            <p>Kontakt:<br/>Telefon: 0221 - 123 456 78<br/>E-Mail: info@mgo-retro.de</p>
+            <p>Registereintrag:<br/>Eintragung im Handelsregister.<br/>Registergericht: Amtsgericht Köln<br/>Registernummer: HRB 123456</p>
+          </LegalPage>
+        )}
+
+        {currentPage === 'datenschutz' && (
+          <LegalPage title="Datenschutz" onBack={() => setCurrentPage('home')}>
+            <p>1. Datenschutz auf einen Blick<br/>Allgemeine Hinweise: Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.</p>
+            <p>2. Datenerfassung auf dieser Website<br/>Die Datenverarbeitung auf dieser Website erfolgt durch den Websitebetreiber. Dessen Kontaktdaten können Sie dem Impressum dieser Website entnehmen.</p>
+            <p>3. Cookies<br/>Unsere Internetseiten verwenden so genannte „Cookies“. Cookies sind kleine Textdateien und richten auf Ihrem Endgerät keinen Schaden an. Sie werden entweder vorübergehend für die Dauer einer Sitzung (Session-Cookies) oder dauerhaft (permanente Cookies) auf Ihrem Endgerät gespeichert.</p>
+          </LegalPage>
+        )}
+
+        {currentPage === 'agb' && (
+          <LegalPage title="AGB" onBack={() => setCurrentPage('home')}>
+            <p>§1 Geltungsbereich<br/>Diese Allgemeinen Geschäftsbedingungen gelten für alle Ticketkäufe und Besuche der MGO Retro Klassiker Events.</p>
+            <p>§2 Vertragsschluss<br/>Der Vertrag kommt durch den Erwerb einer Eintrittskarte an der Kinokasse oder über unser Online-Ticketsystem zustande.</p>
+            <p>§3 Hausordnung<br/>Mit dem Erwerb der Eintrittskarte erkennt der Besucher die Hausordnung des Kinos an. Den Anweisungen des Personals ist Folge zu leisten.</p>
+            <p>§4 Rückgabe von Tickets<br/>Gekaufte Tickets sind grundsätzlich von der Rückgabe und dem Umtausch ausgeschlossen. Bei Ausfall einer Vorstellung wird der Kaufpreis erstattet.</p>
+          </LegalPage>
+        )}
       </main>
-      <Footer />
+      
+      <Footer onNavigate={setCurrentPage} />
     </div>
   );
 }
