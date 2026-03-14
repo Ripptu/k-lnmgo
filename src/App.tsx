@@ -177,7 +177,7 @@ const Program = () => {
     let animationFrameId: number;
     const scroll = () => {
       if (scrollRef.current && !isDragging) {
-        scrollRef.current.scrollLeft += 1.5;
+        scrollRef.current.scrollLeft += 0.4;
         if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth / 2) {
           scrollRef.current.scrollLeft = 0;
         }
