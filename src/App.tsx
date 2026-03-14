@@ -168,44 +168,7 @@ const ProgramCard = ({ prog, idx }: { prog: typeof programs[0], idx: number }) =
 };
 
 const Program = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  useEffect(() => {
-    let animationFrameId: number;
-    const scroll = () => {
-      if (scrollRef.current && !isDragging) {
-        scrollRef.current.scrollLeft += 0.4;
-        if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth / 2) {
-          scrollRef.current.scrollLeft = 0;
-        }
-      }
-      animationFrameId = requestAnimationFrame(scroll);
-    };
-    animationFrameId = requestAnimationFrame(scroll);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [isDragging]);
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    if (scrollRef.current) {
-      setStartX(e.pageX - scrollRef.current.offsetLeft);
-      setScrollLeft(scrollRef.current.scrollLeft);
-    }
-  };
-  const onMouseLeave = () => setIsDragging(false);
-  const onMouseUp = () => setIsDragging(false);
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !scrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - startX) * 2;
-    scrollRef.current.scrollLeft = scrollLeft - walk;
-  };
-
-  const extendedPrograms = [...programs, ...programs, ...programs, ...programs];
+  const programSet = [...programs, ...programs]; // Double the programs to ensure it fills wide screens
 
   return (
     <section id="programm" className="py-32 overflow-hidden">
@@ -220,20 +183,29 @@ const Program = () => {
         </motion.h2>
       </div>
       
-      <div 
-        ref={scrollRef}
-        className="flex gap-10 overflow-x-hidden cursor-grab active:cursor-grabbing px-6 w-full pb-10"
-        onMouseDown={onMouseDown}
-        onMouseLeave={onMouseLeave}
-        onMouseUp={onMouseUp}
-        onMouseMove={onMouseMove}
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        {extendedPrograms.map((prog, idx) => (
-          <div key={idx} className="w-[280px] md:w-[350px] shrink-0" onDragStart={(e) => e.preventDefault()}>
-            <ProgramCard prog={prog} idx={idx} />
+      <div className="relative w-full overflow-hidden flex pb-10 group">
+        <motion.div 
+          className="flex w-max"
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ ease: "linear", duration: 60, repeat: Infinity }}
+        >
+          {/* First Half */}
+          <div className="flex gap-10 pr-10">
+            {programSet.map((prog, idx) => (
+              <div key={`first-${idx}`} className="w-[280px] md:w-[350px] shrink-0">
+                <ProgramCard prog={prog} idx={idx} />
+              </div>
+            ))}
           </div>
-        ))}
+          {/* Second Half (Identical) */}
+          <div className="flex gap-10 pr-10">
+            {programSet.map((prog, idx) => (
+              <div key={`second-${idx}`} className="w-[280px] md:w-[350px] shrink-0">
+                <ProgramCard prog={prog} idx={idx} />
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   );
